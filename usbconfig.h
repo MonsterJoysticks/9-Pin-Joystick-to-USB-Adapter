@@ -65,11 +65,7 @@ rename it to "usbconfig.h". Then edit it accordingly.
 /* Define this to 1 if you want to compile a version with two endpoints: The
  * default control endpoint 0 and an interrupt-in endpoint 1.
  */
-#define USB_CFG_HAVE_INTRIN_ENDPOINT3   0
-/* Define this to 1 if you want to compile a version with three endpoints: The
- * default control endpoint 0, an interrupt-in endpoint 1 and an interrupt-in
- * endpoint 3. You must also enable endpoint 1 above.
- */
+
 /* #define USB_INITIAL_DATATOKEN           USBPID_DATA0 */
 /* The above macro defines the startup condition for data toggling on the
  * interrupt/bulk endpoints 1 and 3. Defaults to USBPID_DATA0.
@@ -89,7 +85,7 @@ rename it to "usbconfig.h". Then edit it accordingly.
 /* Define this to 1 if the device has its own power supply. Set it to 0 if the
  * device is powered from the USB bus.
  */
-#define USB_CFG_MAX_BUS_POWER           100
+#define USB_CFG_MAX_BUS_POWER           500
 /* Set this variable to the maximum USB bus power consumption of your device.
  * The value is in milliamperes. [It will be divided by two since USB
  * communicates power requirements in units of 2 mA.]
@@ -133,11 +129,11 @@ rename it to "usbconfig.h". Then edit it accordingly.
 #define  USB_CFG_DEVICE_ID       0xdc, 0x27
 
 /* Vendor ID for C64 mini Compat */
-// #define  USB_CFG_VENDOR_ID       0x9B, 0x28
-// #define  USB_CFG_DEVICE_ID       0x03, 0x00
+#define  USB_CFG_VENDOR_ID_C64   0x79, 0x00
+#define  USB_CFG_DEVICE_ID_C64   0x06, 0x00
 
 
-#define USB_CFG_DEVICE_VERSION  0x02, 0x00
+#define USB_CFG_DEVICE_VERSION  0x02, 0x01
 /* Version number of the device: Minor number first, then major number.
  */
 #define USB_CFG_VENDOR_NAME     'M', 'o', 'n', 's', 't', 'e', 'r', ' ', 'J', 'o', 'y', 's', 't', 'i', 'c', 'k', 's'
@@ -243,6 +239,7 @@ rename it to "usbconfig.h". Then edit it accordingly.
  */
 #define DEVICE_STRING_LENGTH	6
 #define DEFAULT_PROD_STRING	'M','J','2','D','B','9'
+#define	DEFAULT_PROD_STRING_C64	'M','J','2','C','6','4'
 
 #define USB_CFG_DESCR_PROPS_STRING_PRODUCT          (USB_PROP_LENGTH(((DEVICE_STRING_LENGTH+2)*2)) | USB_PROP_IS_RAM)
 

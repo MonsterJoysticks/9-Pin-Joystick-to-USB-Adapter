@@ -9,6 +9,7 @@ You can use the adapter to connect any of the following devices via USB
 * Commodore 64 Compatible Joysticks
 * SEGA Master System Controllers
 * SEGA MegaDrive/Genesis Controllers (3 & 6 Button variants)
+* Amiga CD32 (Hold up when connecting USB to enable CD32 Compatibility)
 
 The adapter is detected as a USB HID joystick and is compatible with the following;
 * Windows

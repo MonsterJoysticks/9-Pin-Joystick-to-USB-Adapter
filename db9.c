@@ -14,7 +14,6 @@
 #include <string.h>
 
 #include "gamepad.h"
-#include "db9.h"
 
 #define REPORT_SIZE		3
 #define GAMEPAD_BYTES	3
@@ -25,6 +24,8 @@
 #define INPUT_TYPE_MD6 		0x03 // all bits
 
 #define isMD(a) ( (a) >= INPUT_TYPE_MD)
+
+int isCD32 = 0;
 
 static unsigned char cur_id = INPUT_TYPE_MD;
 
@@ -133,20 +134,20 @@ static char db9Init(void)
 	sreg = SREG;
 	cli();
 
-	DDRD &= ~0x40; //BtnC/BtnStart 
-	PORTD |= 0x40;
-	
-	DDRC |= 0x20;	// SELECT
-	PORTC |= 0x20;
+	DDRC &= ~0x1F; // PC0->PC4 = Pins1,2,3,4,6 = U,D,L,R,B1 INPUT
+	PORTC |= 0x1F; // Set to high
 
-	DDRC &= ~0x1F; // direction and buttons
-	PORTC |= 0x1F;
+	DDRD &= ~0x40; // PD6 = Pin9 = B2 INPUT
+	PORTD |= 0x40; // Set to High
+	
+	DDRC |= 0x20;	// PC5 = Pin7 =  SELECT OUTPUT
+	PORTC |= 0x20;	// Set to High
 
 	// set the output voltages and ground for controller
-	DDRB |= 0x01;
-	PORTB |= 0x01; // PB0 goes high
-	DDRD |= 0x80;
-	PORTD &= ~0x80; // PD7 goes low
+	DDRB |= 0x01;	// PB0 = Pin5 = Power5V OUTPUT
+	PORTB |= 0x01;	// PB0 goes high
+	DDRD |= 0x80;	// PD7 = Pin8 = GND OUTPUT
+	PORTD &= ~0x80; // Set To Low
 
 	readController(bits);
 
@@ -170,6 +171,11 @@ static char db9Init(void)
 		cur_id = INPUT_TYPE_MD6;
 	}
 
+	// autodetect if up is held for CD32 Compatibilty
+	if (!(bits[0] & 0x01) || !(bits[1] & 0x01) || !(bits[2] & 0x01) || !(bits[3] & 0x01) || !(bits[4] & 0x01)) {
+		isCD32 = 1;
+	}
+
 	db9Update();
 
 	SREG = sreg;
@@ -180,7 +186,8 @@ static char db9Init(void)
 static void db9Update(void)
 {
 	unsigned char data[READ_CONTROLLER_SIZE];
-	int x=128,y=128;
+	int x=0xff/2,y=0xff/2;
+	unsigned char button;
 	
 	/* 0: Up//Z
 	 * 1: Down//Y
@@ -189,41 +196,106 @@ static void db9Update(void)
 	 * 4: Btn B/A
 	 * 5: Btn C/Start/
 	 */
-	readController(data);
+	
+	if( isCD32 == 1 ) {
+	
+		_delay_us(100);
+		data[0] = SAMPLE();
+		data[1] = data[0];
+		data[0] = data[0] ^ 0xff;
+		data[1] = data[1] ^ 0xff;
 
-	/* Buttons are active low. Invert the bits
-	 * here to simplify subsequent 'if' statements... */
-	data[0] = data[0] ^ 0xff;
-	data[1] = data[1] ^ 0xff;
-	data[2] = data[2] ^ 0xff;
+		if (data[0] & 1) { y = 0x00; } // up
+		if (data[0] & 2) { y = 0xff; } //down
+		if (data[0] & 4) { x = 0x00; }  // left
+		if (data[0] & 8) { x = 0xff; } // right
 
-	if (data[0] & 1) { y = 0; } // up
-	if (data[0] & 2) { y = 255; } //down
-	if (data[0] & 4) { x = 0; }  // left
-	if (data[0] & 8) { x = 255; } // right
+		last_read_controller_bytes[0]=x;
+		last_read_controller_bytes[1]=y;
 
-	last_read_controller_bytes[0]=x;
-	last_read_controller_bytes[1]=y;
+		/* 
+		* PC0 = UP (IN, 1)
+		* PC1 = DOWN (IN, 1)
+		* PC2 = LEFT (IN,1 )
+		* PC3 = RIGHT (IN, 1)
+		* PC4 = CLK (OUT, 1)
+		* PD6 = DATA (IN, 0)
+		* PB0 = SHIFT (OUT, 0) 
+		*/
 
- 	last_read_controller_bytes[2]=0;
+		DDRC |= 0x10; // PC4 CLK OUT
+		PORTC |= 0x10; // PC4 CLK HIGH
 
-	if ( isMD(cur_id) ) {
+		DDRD &= ~0x40; // PD6 DATA IN
+		PORTD &= ~0x40; // Set To Low
 
-		if (data[1]&0x10) { last_read_controller_bytes[2] |= 0x01; } // A
-		if (data[0]&0x10) { last_read_controller_bytes[2] |= 0x02; } // B
-		if (data[0]&0x20) { last_read_controller_bytes[2] |= 0x04; } // C
-		if (data[1]&0x20) { last_read_controller_bytes[2] |= 0x08; } // Start
-		if (cur_id == INPUT_TYPE_MD6) {
-			if (data[2]&0x04) { last_read_controller_bytes[2] |= 0x10; } // X
-			if (data[2]&0x02) { last_read_controller_bytes[2] |= 0x20; } // Y
-			if (data[2]&0x01) { last_read_controller_bytes[2] |= 0x40; } // Z
+		DDRB |= 0x01; // PB0 Shift OUT
+		PORTB &= ~0x01; // Set To Low
 
-			if (data[2]&0x08) { last_read_controller_bytes[2] |= 0x80; } // Mode
+		last_read_controller_bytes[2]=0;
+		data[2]=0x00;
+
+		PORTB |= 0x01; // Set Shift To Low
+		_delay_us(12);
+		PORTB &= ~0x01; // Set Shift To Low
+
+		for (button=0; button<7; button++)
+		{
+			_delay_us(6);
+			PORTC &= ~0x10; // PC4 CLK LOW
+			if (!(PIND & 0x40)) { data[2] |= 1; }
+			data[2] <<= 1;
+			_delay_us(6);
+			PORTC |= 0x10; // PC4 CLK HIGH
 		}
+
+		if ( data[2]&0x80 ) last_read_controller_bytes[2] |= 0x01; // red
+		if ( data[2]&0x40 ) last_read_controller_bytes[2] |= 0x02; // blue
+		if ( data[2]&0x20 ) last_read_controller_bytes[2] |= 0x04; // green
+		if ( data[2]&0x10 ) last_read_controller_bytes[2] |= 0x08; // Yellow
+		if ( data[2]&0x08 ) last_read_controller_bytes[2] |= 0x10; // LB
+		if ( data[2]&0x04 ) last_read_controller_bytes[2] |= 0x20; // RB
+		if ( data[2]&0x02 ) last_read_controller_bytes[2] |= 0x40; // Start
+
 	} else {
-		if (data[0]&0x10) { last_read_controller_bytes[2] |= 0x01; } // Button 1
-		if (data[0]&0x20) { last_read_controller_bytes[2] |= 0x02; } // Button 2
+		
+		readController(data);
+
+		/* Buttons are active low. Invert the bits
+		* here to simplify subsequent 'if' statements... */
+		data[0] = data[0] ^ 0xff;
+		data[1] = data[1] ^ 0xff;
+		data[2] = data[2] ^ 0xff;
+
+		if (data[0] & 1) { y = 0x00; } // up
+		if (data[0] & 2) { y = 0xff; } //down
+		if (data[0] & 4) { x = 0x00; }  // left
+		if (data[0] & 8) { x = 0xff; } // right
+
+		last_read_controller_bytes[0]=x;
+		last_read_controller_bytes[1]=y;
+
+		last_read_controller_bytes[2]=0;
+
+		if ( isMD(cur_id) ) {
+
+			if (data[1]&0x10) { last_read_controller_bytes[2] |= 0x01; } // A
+			if (data[0]&0x10) { last_read_controller_bytes[2] |= 0x02; } // B
+			if (data[0]&0x20) { last_read_controller_bytes[2] |= 0x04; } // C
+			if (data[1]&0x20) { last_read_controller_bytes[2] |= 0x08; } // Start
+			if (cur_id == INPUT_TYPE_MD6) {
+				if (data[2]&0x04) { last_read_controller_bytes[2] |= 0x10; } // X
+				if (data[2]&0x02) { last_read_controller_bytes[2] |= 0x20; } // Y
+				if (data[2]&0x01) { last_read_controller_bytes[2] |= 0x40; } // Z
+
+				if (data[2]&0x08) { last_read_controller_bytes[2] |= 0x80; } // Mode
+			}
+		} else {
+			if (data[0]&0x10) { last_read_controller_bytes[2] |= 0x01; } // Button 1
+			if (data[0]&0x20) { last_read_controller_bytes[2] |= 0x02; } // Button 2
+		}
 	}
+	
 }	
 
 static char db9Changed(char id)
@@ -249,28 +321,31 @@ static char db9BuildReport(unsigned char *reportBuffer, char id)
 }
 
 static const char usbHidReportDescriptor[] PROGMEM = {
-    0x05, 0x01,                    // USAGE_PAGE (Generic Desktop)
-    0x09, 0x05,                    // USAGE (Game Pad)
+    
+	0x05, 0x01,                    // USAGE_PAGE (Generic Desktop)
+    0x09, 0x04,                    // USAGE (Game Pad) 0x05
     0xa1, 0x01,                    // COLLECTION (Application)
-    0x09, 0x01,                    // USAGE (Pointer)
-    0xa1, 0x00,                    // COLLECTION (Physical)
-    0x09, 0x30,                    // USAGE (X)
-    0x09, 0x31,                    // USAGE (Y)
-    0x15, 0x00,                    // LOGICAL_MINIMUM (0)
-    0x26, 0xff, 0x00,              // LOGICAL_MAXIMUM (255)
-    0x75, 0x08,                    // REPORT_SIZE (8)
-    0x95, 0x02,                    // REPORT_COUNT (2)
-    0x81, 0x02,                    // INPUT (Data,Var,Abs)
+		0x09, 0x01,                    // USAGE (Pointer)
+		0xa1, 0x00,                    // COLLECTION (Physical)
+			0x09, 0x30,                    // USAGE (X)
+			0x09, 0x31,                    // USAGE (Y)
+			0x15, 0x00,                    // LOGICAL_MINIMUM (0)
+			0x26, 0xff, 0x00,              // LOGICAL_MAXIMUM (255)
+			0x75, 0x08,                    // REPORT_SIZE (8)
+			0x95, 0x02,                    // REPORT_COUNT (2)
+			0x81, 0x02,                    // INPUT (Data,Var,Abs)
+		
+			0x05, 0x09,                    // USAGE_PAGE (Button)
+			0x19, 0x01,                    // USAGE_MINIMUM (Button 1)
+			0x29, 0x08,                    // USAGE_MAXIMUM (Button 8)
+			0x15, 0x00,                    // LOGICAL_MINIMUM (0)
+			0x25, 0x01,                    // LOGICAL_MAXIMUM (1)
+			0x75, 0x01,                    // REPORT_SIZE (1)
+			0x95, 0x08,                    // REPORT_COUNT (8)
+			0x81, 0x02,                    // INPUT (Data,Var,Abs)
+		0xc0,                          // END_COLLECTION
     0xc0,                          // END_COLLECTION
-    0x05, 0x09,                    // USAGE_PAGE (Button)
-    0x19, 0x01,                    // USAGE_MINIMUM (Button 1)
-    0x29, 0x08,                    // USAGE_MAXIMUM (Button 8)
-    0x15, 0x00,                    // LOGICAL_MINIMUM (0)
-    0x25, 0x01,                    // LOGICAL_MAXIMUM (1)
-    0x75, 0x01,                    // REPORT_SIZE (1)
-    0x95, 0x08,                    // REPORT_COUNT (8)
-    0x81, 0x02,                    // INPUT (Data,Var,Abs)
-    0xc0                           // END_COLLECTION
+
 };
 
 Gamepad db9Gamepad = {
