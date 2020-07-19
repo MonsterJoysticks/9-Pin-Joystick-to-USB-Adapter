@@ -133,7 +133,7 @@ rename it to "usbconfig.h". Then edit it accordingly.
 #define  USB_CFG_DEVICE_ID_C64   0x06, 0x00
 
 
-#define USB_CFG_DEVICE_VERSION  0x02, 0x01
+#define USB_CFG_DEVICE_VERSION  0x02, 0x00
 /* Version number of the device: Minor number first, then major number.
  */
 #define USB_CFG_VENDOR_NAME     'M', 'o', 'n', 's', 't', 'e', 'r', ' ', 'J', 'o', 'y', 's', 't', 'i', 'c', 'k', 's'
