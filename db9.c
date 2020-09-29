@@ -91,30 +91,30 @@ static void readController(unsigned char bits[READ_CONTROLLER_SIZE])
 		return;
 	}
 	CLR_SELECT();
-	_delay_us(20.0);
+	_delay_us(10.0);
 	b = SAMPLE();
 
 	/* 2 */
 	SET_SELECT();
-	_delay_us(20.0);
+	_delay_us(10.0);
 	CLR_SELECT();
-	_delay_us(20.0);
+	_delay_us(10.0);
 	d = SAMPLE();
 
 	/* 3 */
 	SET_SELECT();
-	_delay_us(20.0);
+	_delay_us(10.0);
 	CLR_SELECT();
-	_delay_us(20.0);
+	_delay_us(10.0);
 	e = SAMPLE();
 
 	/* 4 */
 	SET_SELECT();
-	_delay_us(20.0);
+	_delay_us(10.0);
 	c = SAMPLE();
 
 	CLR_SELECT();
-	_delay_us(20.0);
+	_delay_us(10.0);
 
 	/* 5 */
 	SET_SELECT();
