@@ -20,7 +20,7 @@ The adapter is detected as a USB HID joystick and is compatible with the followi
 * Most Linux Distros
 
 # Updating the Firmware
-The latest pre-compiled firmware hex file ready for flashing can be found at https://github.com/MonsterJoysticks/9-Pin-Joystick-to-USB-Adapter/releases/download/1.03/main.hex. Alternatively, you can compile your own.
+The latest pre-compiled firmware hex file ready for flashing can be found at https://github.com/MonsterJoysticks/9-Pin-Joystick-to-USB-Adapter/releases/download/1.03/main.hex. Alternatively, you can compile your own using the code here (see below for details).
 
 Once you have downloaded or compiled the firmware hex file, you can use the BootloadHID <https://www.obdev.at/products/vusb/bootloadhid.html> command line utility or HIDBootFlash GUI and command line utility (Windows only) to flash the file to the device via USB. 
 
